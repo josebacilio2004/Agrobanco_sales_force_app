@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "324912269423",
+    "project_id": "agrobanco-sf-offline-001",
+    "storage_bucket": "agrobanco-sf-offline-001.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:324912269423:android:a73c8ad975951cbdd9e59a",
+        "android_client_info": {
+          "package_name": "com.agrobanco.salesforce.agrobanco_sales_force"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5Hk7FmL-qieUMFhVmQMQC19A_1mrZ3cA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
