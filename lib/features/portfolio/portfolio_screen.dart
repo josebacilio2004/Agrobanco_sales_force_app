@@ -268,10 +268,14 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '$totalClients Clientes · $visitedClients Visitados · $pendingClients Pendientes',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                        Expanded(
+                          child: Text(
+                            '$totalClients Clientes · $visitedClients Visitados · $pendingClients Pendientes',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '${(progressVal * 100).toInt()}%',
                           style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7ED99E)),
@@ -402,22 +406,28 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      // Reorder handle placeholder
-                                      const Icon(Icons.drag_indicator, size: 18, color: Colors.white24),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        client.name.toUpperCase(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: client.isVisited ? Colors.white38 : AppColors.primary,
-                                          decoration: client.isVisited ? TextDecoration.lineThrough : null,
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        // Reorder handle placeholder
+                                        const Icon(Icons.drag_indicator, size: 18, color: Colors.white24),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            client.name.toUpperCase(),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: client.isVisited ? Colors.white38 : AppColors.primary,
+                                              decoration: client.isVisited ? TextDecoration.lineThrough : null,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   _buildTypeChip(client.status),
                                 ],
                               ),
