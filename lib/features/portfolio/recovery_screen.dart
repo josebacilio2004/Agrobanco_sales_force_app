@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RecoveryScreen extends StatefulWidget {
   const RecoveryScreen({super.key});
@@ -13,30 +14,65 @@ class RecoveryScreen extends StatefulWidget {
 }
 
 class _RecoveryScreenState extends State<RecoveryScreen> {
-  // Mock recovery data (HU-30)
-  final List<Map<String, dynamic>> _overdueClients = [
-    {
-      'name': 'GUSTAVO MEZA ROJAS',
-      'daysLate': 18,
-      'amount': 450.0,
-      'lastContact': 'Llamada el 20/05',
-      'isVisited': false,
-    },
-    {
-      'name': 'ROSA ALBA INGA',
-      'daysLate': 45,
-      'amount': 1200.0,
-      'lastContact': 'Visita el 15/05',
-      'isVisited': false,
-    },
-    {
-      'name': 'FELIPE HUAMAN SOTO',
-      'daysLate': 75,
-      'amount': 3800.0,
-      'lastContact': 'Sin contacto',
-      'isVisited': false,
-    },
-  ];
+  List<Map<String, dynamic>> _overdueClients = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOverdueClients();
+  }
+
+  Future<void> _fetchOverdueClients() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('overdue_clients').get();
+      if (snap.docs.isNotEmpty) {
+        setState(() {
+          _overdueClients = snap.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'name': data['name'],
+              'daysLate': data['daysLate'] as int,
+              'amount': (data['amount'] as num).toDouble(),
+              'lastContact': data['lastContact'],
+              'isVisited': data['isVisited'] as bool,
+            };
+          }).toList();
+        });
+      } else {
+        _loadDefaultOverdue();
+      }
+    } catch (e) {
+      _loadDefaultOverdue();
+    }
+  }
+
+  void _loadDefaultOverdue() {
+    setState(() {
+      _overdueClients = [
+        {
+          'name': 'GUSTAVO MEZA ROJAS',
+          'daysLate': 18,
+          'amount': 450.0,
+          'lastContact': 'Llamada el 20/05',
+          'isVisited': false,
+        },
+        {
+          'name': 'ROSA ALBA INGA',
+          'daysLate': 45,
+          'amount': 1200.0,
+          'lastContact': 'Visita el 15/05',
+          'isVisited': false,
+        },
+        {
+          'name': 'FELIPE HUAMAN SOTO',
+          'daysLate': 75,
+          'amount': 3800.0,
+          'lastContact': 'Sin contacto',
+          'isVisited': false,
+        },
+      ];
+    });
+  }
 
   void _showCollectionActionSheet(Map<String, dynamic> client) {
     String actionType = 'Visita';

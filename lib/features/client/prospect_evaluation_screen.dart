@@ -5,6 +5,7 @@ import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
 import '../loan_request/loan_request_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProspectEvaluationScreen extends StatefulWidget {
   const ProspectEvaluationScreen({super.key});
@@ -26,6 +27,58 @@ class _ProspectEvaluationScreenState extends State<ProspectEvaluationScreen> {
   bool _isLoading = false;
   String _result = 'APTO'; // APTO, REVISAR, NO PROCEDE
   String _reason = '';
+  List<Map<String, dynamic>> _campaigns = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCampaigns();
+  }
+
+  Future<void> _fetchCampaigns() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('campaigns').get();
+      if (snap.docs.isNotEmpty) {
+        setState(() {
+          _campaigns = snap.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'type': data['type'],
+              'client': data['client'],
+              'amount': data['amount'],
+              'expiry': data['expiry'],
+              'color': Color(data['colorValue'] as int),
+            };
+          }).toList();
+        });
+      } else {
+        _loadDefaultCampaigns();
+      }
+    } catch (e) {
+      _loadDefaultCampaigns();
+    }
+  }
+
+  void _loadDefaultCampaigns() {
+    setState(() {
+      _campaigns = [
+        {
+          'type': 'RENOVACIÓN',
+          'client': 'Lucio Fernandez C.',
+          'amount': 'S/ 18,000.00',
+          'expiry': 'Expira en 5 días',
+          'color': const Color(0xFF2196F3)
+        },
+        {
+          'type': 'AMPLIACIÓN',
+          'client': 'Gisela Diaz Palacios',
+          'amount': 'S/ 25,000.00',
+          'expiry': 'Expira en 12 días',
+          'color': const Color(0xFF4CAF50)
+        },
+      ];
+    });
+  }
 
   @override
   void dispose() {
@@ -82,23 +135,7 @@ class _ProspectEvaluationScreenState extends State<ProspectEvaluationScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Mock campaigns list (HU-16)
-    final campaigns = [
-      {
-        'type': 'RENOVACIÓN',
-        'client': 'Lucio Fernandez C.',
-        'amount': 'S/ 18,000.00',
-        'expiry': 'Expira en 5 días',
-        'color': const Color(0xFF2196F3)
-      },
-      {
-        'type': 'AMPLIACIÓN',
-        'client': 'Gisela Diaz Palacios',
-        'amount': 'S/ 25,000.00',
-        'expiry': 'Expira en 12 días',
-        'color': const Color(0xFF4CAF50)
-      },
-    ];
+    final campaigns = _campaigns;
 
     return Scaffold(
       appBar: AppBar(

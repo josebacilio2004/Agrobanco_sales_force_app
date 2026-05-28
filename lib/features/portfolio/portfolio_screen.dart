@@ -7,6 +7,7 @@ import '../../shared/widgets/glass_background.dart';
 import '../client/client_details_screen.dart';
 import '../loan_request/loan_request_screen.dart';
 import 'client_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PortfolioScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -24,7 +25,37 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   @override
   void initState() {
     super.initState();
-    _resetMockData();
+    _clients = [];
+    _fetchClientsFromFirestore();
+  }
+
+  Future<void> _fetchClientsFromFirestore() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('clients').get();
+      if (snap.docs.isNotEmpty) {
+        setState(() {
+          _clients = snap.docs.map((doc) {
+            final data = doc.data();
+            return Client(
+              id: data['id'] as String,
+              name: data['name'] as String,
+              dni: data['dni'] as String,
+              status: data['status'] as String,
+              loanAmount: (data['loanAmount'] as num).toDouble(),
+              dueDate: DateTime.parse(data['dueDate'] as String),
+              location: data['location'] as String,
+              priority: data['priority'] as String,
+              isVisited: data['isVisited'] as bool,
+            );
+          }).toList();
+        });
+      } else {
+        _resetMockData();
+      }
+    } catch (e) {
+      debugPrint("Error fetching from Firestore, falling back to mock: $e");
+      _resetMockData();
+    }
   }
 
   void _resetMockData() {
@@ -99,10 +130,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      _resetMockData();
-    });
+    await _fetchClientsFromFirestore();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

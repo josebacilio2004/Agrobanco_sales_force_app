@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/glass_background.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RoutePlanningScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -26,41 +27,77 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
   // Center map around Huancayo, Peru
   final LatLng _mapCenter = const LatLng(-12.06513, -75.20486);
 
-  // List of route points with actual LatLng coordinates in Huancayo
-  final List<Map<String, dynamic>> _points = [
-    {
-      'id': '1',
-      'name': 'Juan Perez Ramos',
-      'time': '8:30 AM',
-      'status': 'Completado',
-      'priority': 'ALTA',
-      'latlng': const LatLng(-12.0678, -75.2100),
-    },
-    {
-      'id': '2',
-      'name': 'Maria Quispe Soto',
-      'time': '10:45 AM',
-      'status': 'En Camino',
-      'priority': 'ALTA',
-      'latlng': const LatLng(-12.0590, -75.1950),
-    },
-    {
-      'id': '3',
-      'name': 'Carlos Huaman Diaz',
-      'time': '2:00 PM',
-      'status': 'Pendiente',
-      'priority': 'MEDIA',
-      'latlng': const LatLng(-12.0720, -75.2010),
-    },
-    {
-      'id': '4',
-      'name': 'Elena Rivas Castro',
-      'time': '4:15 PM',
-      'status': 'Pendiente',
-      'priority': 'NORMAL',
-      'latlng': const LatLng(-12.0620, -75.2150),
-    },
-  ];
+  List<Map<String, dynamic>> _points = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPoints();
+  }
+
+  Future<void> _fetchPoints() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('routes').get();
+      if (snap.docs.isNotEmpty) {
+        setState(() {
+          _points = snap.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': data['id'],
+              'name': data['name'],
+              'time': data['time'],
+              'status': data['status'],
+              'priority': data['priority'],
+              'latlng': LatLng(data['latitude'] as double, data['longitude'] as double),
+            };
+          }).toList();
+        });
+      } else {
+        _loadDefaultPoints();
+      }
+    } catch (e) {
+      _loadDefaultPoints();
+    }
+  }
+
+  void _loadDefaultPoints() {
+    setState(() {
+      _points = [
+        {
+          'id': '1',
+          'name': 'Juan Perez Ramos',
+          'time': '8:30 AM',
+          'status': 'Completado',
+          'priority': 'ALTA',
+          'latlng': const LatLng(-12.0678, -75.2100),
+        },
+        {
+          'id': '2',
+          'name': 'Maria Quispe Soto',
+          'time': '10:45 AM',
+          'status': 'En Camino',
+          'priority': 'ALTA',
+          'latlng': const LatLng(-12.0590, -75.1950),
+        },
+        {
+          'id': '3',
+          'name': 'Carlos Huaman Diaz',
+          'time': '2:00 PM',
+          'status': 'Pendiente',
+          'priority': 'MEDIA',
+          'latlng': const LatLng(-12.0720, -75.2010),
+        },
+        {
+          'id': '4',
+          'name': 'Elena Rivas Castro',
+          'time': '4:15 PM',
+          'status': 'Pendiente',
+          'priority': 'NORMAL',
+          'latlng': const LatLng(-12.0620, -75.2150),
+        },
+      ];
+    });
+  }
 
   // Geofence polygon points defining the work zone boundary (HU-09 / RF-23)
   final List<LatLng> _geofencePoints = const [

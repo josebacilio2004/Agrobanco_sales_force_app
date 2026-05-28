@@ -5,6 +5,7 @@ import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
 import '../../shared/widgets/main_navigation_screen.dart';
+import '../../core/database/firebase_seeder.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -293,7 +294,50 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () async {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const Center(
+                          child: CircularProgressIndicator(color: AppColors.primary),
+                        ),
+                      );
+                      try {
+                        await FirebaseSeeder.seedAll();
+                        if (context.mounted) {
+                          Navigator.of(context).pop(); // Close spinner
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Firebase base de datos inicializada con éxito!'),
+                              backgroundColor: Color(0xFF00C853),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.of(context).pop(); // Close spinner
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al inicializar Firebase: $e'),
+                              backgroundColor: AppColors.critical,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.cloud_upload_outlined, color: Color(0xFF7ED99E), size: 16),
+                    label: const Text(
+                      'Inicializar Base de Datos Firebase (Seeder)',
+                      style: TextStyle(
+                        color: Color(0xFF7ED99E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   Text(
                     'Versión 2.0.0 - Offline Sync Ready\nSupabase & Isar DB Enabled',
                     textAlign: TextAlign.center,
