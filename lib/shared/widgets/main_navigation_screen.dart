@@ -25,12 +25,18 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const PortfolioScreen(),
-    const RoutePlanningScreen(),
-    const RequestStatusScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      PortfolioScreen(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+      RoutePlanningScreen(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+      RequestStatusScreen(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+    ];
+  }
 
   void _handleLogout() {
     // Simulated check for unsynced forms (HU-03 / RF-08)
@@ -84,6 +90,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -94,7 +101,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
+            child: Material(
               color: Colors.black.withOpacity(0.4),
               child: SafeArea(
                 child: Column(

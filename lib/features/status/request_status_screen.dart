@@ -6,7 +6,8 @@ import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
 
 class RequestStatusScreen extends StatefulWidget {
-  const RequestStatusScreen({super.key});
+  final VoidCallback? onMenuPressed;
+  const RequestStatusScreen({super.key, this.onMenuPressed});
 
   @override
   State<RequestStatusScreen> createState() => _RequestStatusScreenState();
@@ -214,6 +215,10 @@ class _RequestStatusScreenState extends State<RequestStatusScreen> with SingleTi
         title: const Text('ESTADO DE SOLICITUDES'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed ?? () => Scaffold.of(context).openDrawer(),
+        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

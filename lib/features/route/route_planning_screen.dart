@@ -7,7 +7,8 @@ import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/glass_background.dart';
 
 class RoutePlanningScreen extends StatefulWidget {
-  const RoutePlanningScreen({super.key});
+  final VoidCallback? onMenuPressed;
+  const RoutePlanningScreen({super.key, this.onMenuPressed});
 
   @override
   State<RoutePlanningScreen> createState() => _RoutePlanningScreenState();
@@ -107,6 +108,10 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
         title: const Text('PLANIFICACIÓN DE RUTA'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed ?? () => Scaffold.of(context).openDrawer(),
+        ),
       ),
       body: GlassBackground(
         child: Column(

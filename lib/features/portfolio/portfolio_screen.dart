@@ -9,7 +9,8 @@ import '../loan_request/loan_request_screen.dart';
 import 'client_model.dart';
 
 class PortfolioScreen extends StatefulWidget {
-  const PortfolioScreen({super.key});
+  final VoidCallback? onMenuPressed;
+  const PortfolioScreen({super.key, this.onMenuPressed});
 
   @override
   State<PortfolioScreen> createState() => _PortfolioScreenState();
@@ -241,11 +242,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         title: const Text('CARTERA DIARIA'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed ?? () => Scaffold.of(context).openDrawer(),
         ),
         actions: [
           IconButton(
