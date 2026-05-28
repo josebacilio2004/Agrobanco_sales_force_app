@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong2.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/glass_background.dart';
