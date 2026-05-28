@@ -6,6 +6,8 @@ import '../../features/status/request_status_screen.dart';
 import '../../features/route/route_planning_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/loan_request/loan_simulator_screen.dart';
+import '../../features/client/prospect_evaluation_screen.dart';
+import '../../features/portfolio/recovery_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final String userCode;
@@ -232,6 +234,30 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const LoanSimulatorScreen()),
+                              );
+                            },
+                          ),
+                          _buildDrawerItem(
+                            icon: Icons.fact_check_outlined,
+                            title: 'Pre-evaluación',
+                            subtitle: 'Prospección (M4)',
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const ProspectEvaluationScreen()),
+                              );
+                            },
+                          ),
+                          _buildDrawerItem(
+                            icon: Icons.assignment_late_outlined,
+                            title: 'Cobranza y Mora',
+                            subtitle: 'Recuperación cartera (M10)',
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RecoveryScreen()),
                               );
                             },
                           ),
