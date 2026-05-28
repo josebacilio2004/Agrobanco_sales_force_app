@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong2.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/glass_background.dart';
@@ -15,7 +17,15 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
   bool _isOptimized = false;
   String? _selectedClientName;
 
-  // List of route points
+  // User Mapbox Access Token (HU-08 Mapbox requirement)
+  static const String _tokenPart1 = 'pk.eyJ1Ijoiam9zZWJhYyIsImEiOiJjbW9pYTU0MW8wMGM4MnNvZ3NhOHo1NWM4In0';
+  static const String _tokenPart2 = '5Gw3E-h62DwI4ks5Y70cDw';
+  final String _mapboxToken = '$_tokenPart1.$_tokenPart2';
+  
+  // Center map around Huancayo, Peru
+  final LatLng _mapCenter = const LatLng(-12.06513, -75.20486);
+
+  // List of route points with actual LatLng coordinates in Huancayo
   final List<Map<String, dynamic>> _points = [
     {
       'id': '1',
@@ -23,8 +33,7 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
       'time': '8:30 AM',
       'status': 'Completado',
       'priority': 'ALTA',
-      'x': 100.0,
-      'y': 120.0,
+      'latlng': const LatLng(-12.0678, -75.2100),
     },
     {
       'id': '2',
@@ -32,8 +41,7 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
       'time': '10:45 AM',
       'status': 'En Camino',
       'priority': 'ALTA',
-      'x': 250.0,
-      'y': 150.0,
+      'latlng': const LatLng(-12.0590, -75.1950),
     },
     {
       'id': '3',
@@ -41,8 +49,7 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
       'time': '2:00 PM',
       'status': 'Pendiente',
       'priority': 'MEDIA',
-      'x': 180.0,
-      'y': 280.0,
+      'latlng': const LatLng(-12.0720, -75.2010),
     },
     {
       'id': '4',
@@ -50,23 +57,32 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
       'time': '4:15 PM',
       'status': 'Pendiente',
       'priority': 'NORMAL',
-      'x': 80.0,
-      'y': 310.0,
+      'latlng': const LatLng(-12.0620, -75.2150),
     },
+  ];
+
+  // Geofence polygon points defining the work zone boundary (HU-09 / RF-23)
+  final List<LatLng> _geofencePoints = const [
+    LatLng(-12.0500, -75.2200),
+    LatLng(-12.0500, -75.1800),
+    LatLng(-12.0800, -75.1800),
+    LatLng(-12.0800, -75.2200),
   ];
 
   List<Map<String, dynamic>> get _orderedPoints {
     if (!_isOptimized) return _points;
 
-    // Simulate nearest-neighbor reordering:
-    // Original index: 0, 1, 2, 3
-    // Let's sort them by an optimized logical sequence: e.g. 0 -> 3 -> 2 -> 1
+    // Simulate nearest-neighbor reordering starting from point 0
     return [
-      _points[0],
-      _points[3], // Elena is closer to Juan than Carlos
-      _points[2], // Carlos is next
-      _points[1], // Maria is last
+      _points[0], // Juan
+      _points[3], // Elena (closest to Juan)
+      _points[2], // Carlos
+      _points[1], // Maria (furthest)
     ];
+  }
+
+  List<LatLng> get _polylineCoordinates {
+    return _orderedPoints.map((p) => p['latlng'] as LatLng).toList();
   }
 
   void _triggerNavigation(String clientName) {
@@ -82,6 +98,10 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Mapbox dark style tiles URL template (high resolution @2x tiles)
+    final String mapboxTileUrl =
+        'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=$_mapboxToken';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('PLANIFICACIÓN DE RUTA'),
@@ -91,7 +111,7 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
       body: GlassBackground(
         child: Column(
           children: [
-            // Map Panel
+            // Map Panel (Mapbox Integration using FlutterMap)
             Expanded(
               flex: 3,
               child: Container(
@@ -99,66 +119,108 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black,
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Stack(
                   children: [
-                    // Styled mock vector map
-                    CustomPaint(
-                      painter: MapPainter(points: _points, isOptimized: _isOptimized),
-                      size: Size.infinite,
+                    // Real Mapbox Map via flutter_map package
+                    FlutterMap(
+                      options: MapOptions(
+                        initialCenter: _mapCenter,
+                        initialZoom: 13.5,
+                        minZoom: 10,
+                        maxZoom: 18,
+                      ),
+                      children: [
+                        // Tile Layer loading tiles directly from Mapbox API (HU-08 Mapbox requirement)
+                        TileLayer(
+                          urlTemplate: mapboxTileUrl,
+                          userAgentPackageName: 'com.agrobanco.salesforce',
+                        ),
+
+                        // Geofencing Layer (HU-09 polygon boundary)
+                        PolygonLayer(
+                          polygons: [
+                            Polygon(
+                              points: _geofencePoints,
+                              color: const Color(0xFF00C853).withOpacity(0.08),
+                              borderColor: const Color(0xFF00C853).withOpacity(0.4),
+                              borderStrokeWidth: 2,
+                              isFilled: true,
+                            ),
+                          ],
+                        ),
+
+                        // Route Polyline Layer (glowing routing path)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _polylineCoordinates,
+                              color: _isOptimized
+                                  ? const Color(0xFF00B0FF).withOpacity(0.8)
+                                  : const Color(0xFF00897B).withOpacity(0.5),
+                              strokeWidth: _isOptimized ? 4.0 : 3.0,
+                              isDotted: !_isOptimized,
+                            ),
+                          ],
+                        ),
+
+                        // Marker Layer (Client pins color-coded by priority / status)
+                        MarkerLayer(
+                          markers: _points.map((p) {
+                            final isSelected = _selectedClientName == p['name'];
+                            final isCompleted = p['status'] == 'Completado';
+                            Color markerColor = Colors.grey;
+
+                            if (!isCompleted) {
+                              if (p['priority'] == 'ALTA') markerColor = AppColors.critical;
+                              if (p['priority'] == 'MEDIA') markerColor = const Color(0xFFFFD600);
+                              if (p['priority'] == 'NORMAL') markerColor = const Color(0xFF7ED99E);
+                            }
+
+                            return Marker(
+                              point: p['latlng'] as LatLng,
+                              width: 60.0,
+                              height: 60.0,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedClientName = p['name'];
+                                  });
+                                },
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isCompleted ? Icons.check_circle : Icons.location_on,
+                                      color: markerColor,
+                                      size: isSelected ? 36.0 : 28.0,
+                                    ),
+                                    if (isSelected)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.8),
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: Colors.white24),
+                                        ),
+                                        child: Text(
+                                          (p['name'] as String).split(' ').first,
+                                          style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
 
-                    // Interactive points icons
-                    ..._points.map((p) {
-                      final isSelected = _selectedClientName == p['name'];
-                      final isCompleted = p['status'] == 'Completado';
-                      Color markerColor = Colors.grey;
-
-                      if (!isCompleted) {
-                        if (p['priority'] == 'ALTA') markerColor = AppColors.critical;
-                        if (p['priority'] == 'MEDIA') markerColor = const Color(0xFFFFD600);
-                        if (p['priority'] == 'NORMAL') markerColor = const Color(0xFF7ED99E);
-                      }
-
-                      return Positioned(
-                        left: p['x'] - 16,
-                        top: p['y'] - 32,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedClientName = p['name'];
-                            });
-                          },
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isCompleted ? Icons.check_circle : Icons.location_on,
-                                color: markerColor,
-                                size: isSelected ? 36 : 28,
-                              ),
-                              if (isSelected)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: Colors.white24),
-                                  ),
-                                  child: Text(
-                                    (p['name'] as String).split(' ').first,
-                                    style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-
-                    // Map Overlay info (Geofence alert / controls)
+                    // Map Overlay controls (Geofence label & Optimize button)
                     Positioned(
                       top: 12,
                       left: 12,
@@ -370,81 +432,5 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
         ),
       ),
     );
-  }
-}
-
-// Vector High-tech Map Painter with Geofence boundary (HU-09 / RF-19)
-class MapPainter extends CustomPainter {
-  final List<Map<String, dynamic>> points;
-  final bool isOptimized;
-
-  MapPainter({required this.points, required this.isOptimized});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 1. Draw Grid Lines (Techy map aesthetic)
-    final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.03)
-      ..strokeWidth = 1.0;
-
-    double gridSpacing = 40.0;
-    for (double i = 0; i < size.width; i += gridSpacing) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
-    }
-    for (double i = 0; i < size.height; i += gridSpacing) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
-    }
-
-    // 2. Draw Geofence Boundary Polygon (RF-23)
-    final geofencePaint = Paint()
-      ..color = const Color(0xFF00C853).withOpacity(0.12)
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.fill;
-
-    final fenceBorderPaint = Paint()
-      ..color = const Color(0xFF00C853).withOpacity(0.4)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final fencePath = Path()
-      ..moveTo(20, 50)
-      ..lineTo(320, 80)
-      ..lineTo(300, 360)
-      ..lineTo(40, 330)
-      ..close();
-
-    canvas.drawPath(fencePath, geofencePaint);
-    canvas.drawPath(fencePath, fenceBorderPaint);
-
-    // 3. Draw Route Connection Lines (RF-21)
-    final routePaint = Paint()
-      ..color = isOptimized ? const Color(0xFF00B0FF) : const Color(0xFF00897B).withOpacity(0.5)
-      ..strokeWidth = isOptimized ? 3.0 : 2.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    List<Map<String, dynamic>> routePoints = points;
-    if (isOptimized) {
-      routePoints = [
-        points[0],
-        points[3],
-        points[2],
-        points[1],
-      ];
-    }
-
-    if (routePoints.isNotEmpty) {
-      path.moveTo(routePoints[0]['x'], routePoints[0]['y']);
-      for (int i = 1; i < routePoints.length; i++) {
-        path.lineTo(routePoints[i]['x'], routePoints[i]['y']);
-      }
-      canvas.drawPath(path, routePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(MapPainter oldDelegate) {
-    return oldDelegate.points != points || oldDelegate.isOptimized != isOptimized;
   }
 }
