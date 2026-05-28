@@ -306,8 +306,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     // Logout
                     Container(
                       padding: const EdgeInsets.all(16),
-                      border: const Border(
-                        top: BorderSide(color: Colors.white10, width: 1),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.white10, width: 1),
+                        ),
                       ),
                       child: OutlinedButton.icon(
                         onPressed: _handleLogout,

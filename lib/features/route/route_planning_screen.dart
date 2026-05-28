@@ -155,7 +155,7 @@ class _RoutePlanningScreenState extends State<RoutePlanningScreen> {
                             ],
                           ),
                         ),
-                      ),
+                      );
                     }),
 
                     // Map Overlay info (Geofence alert / controls)

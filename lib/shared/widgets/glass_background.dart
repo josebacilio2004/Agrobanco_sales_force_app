@@ -33,7 +33,7 @@ class GlassBackground extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF00C853).withOpacity(0.12),
-              shadows: [
+              boxShadow: [
                 BoxShadow(
                   color: const Color(0xFF00C853).withOpacity(0.15),
                   blurRadius: 100,
@@ -53,7 +53,7 @@ class GlassBackground extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFFFFD600).withOpacity(0.06),
-              shadows: [
+              boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFFD600).withOpacity(0.08),
                   blurRadius: 120,
@@ -73,7 +73,7 @@ class GlassBackground extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.primary.withOpacity(0.08),
-              shadows: [
+              boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withOpacity(0.1),
                   blurRadius: 90,
