@@ -32,4 +32,10 @@ class AppColors {
   static const Color outline = Color(0xFF8A9297);
   static const Color silverGray = Color(0xFFBDC3C7);
   static const Color fieldWhite = Color(0xFFFFFFFF);
+
+  // Glassmorphism specific
+  static const Color glassBg = Color(0x10FFFFFF);
+  static const Color glassBorder = Color(0x20FFFFFF);
+  static const Color glassBgGreen = Color(0x157ED99E);
+  static const Color glassBorderGreen = Color(0x307ED99E);
 }

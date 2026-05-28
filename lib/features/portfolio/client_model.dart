@@ -6,6 +6,8 @@ class Client {
   final double loanAmount;
   final DateTime dueDate;
   final String location;
+  final String priority;
+  bool isVisited;
 
   Client({
     required this.id,
@@ -15,5 +17,7 @@ class Client {
     required this.loanAmount,
     required this.dueDate,
     required this.location,
+    this.priority = 'NORMAL',
+    this.isVisited = false,
   });
 }

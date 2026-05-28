@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
+import '../../shared/widgets/glass_background.dart';
 
 class BureauCheckScreen extends StatelessWidget {
   final String dni;
@@ -14,22 +15,69 @@ class BureauCheckScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CONSULTA DE BURÓ'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _buildScoreHeader(theme),
-            const SizedBox(height: 24),
-            _buildRiskIndicator(theme),
-            const SizedBox(height: 24),
-            _buildDetailsSection(theme),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('VOLVER A FICHA'),
+      body: GlassBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildScoreHeader(theme),
+                const SizedBox(height: 24),
+                _buildRiskIndicator(theme),
+                const SizedBox(height: 24),
+                _buildDetailsSection(theme),
+                const SizedBox(height: 24),
+                
+                // Recommendation
+                AgroCard(
+                  color: const Color(0xFF00C853).withOpacity(0.06),
+                  border: Border.all(color: const Color(0xFF00C853).withOpacity(0.3)),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_circle_outline, color: Color(0xFF7ED99E), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RECOMENDACIÓN ANALÍTICA',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF7ED99E), letterSpacing: 0.8),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'El cliente tiene historial limpio en 3 entidades financieras. No registra cuotas vencidas ni procesos judiciales. Recomendado: proceder con la aprobación.',
+                              style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.06),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: AppColors.glassBorder, width: 1.5),
+                    ),
+                  ),
+                  child: const Text('VOLVER A FICHA'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -37,20 +85,28 @@ class BureauCheckScreen extends StatelessWidget {
 
   Widget _buildScoreHeader(ThemeData theme) {
     return AgroCard(
-      color: AppColors.primaryContainer.withOpacity(0.2),
+      color: Colors.white.withOpacity(0.06),
       child: Column(
         children: [
-          const Text('SCORING CREDITICIO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+          const Text(
+            'SCORING CREDITICIO SBS',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 1.2),
+          ),
           const SizedBox(height: 12),
           Text(
             '850',
             style: theme.textTheme.displayLarge?.copyWith(
-              color: AppColors.secondary,
+              color: const Color(0xFF7ED99E),
               fontSize: 64,
+              fontWeight: FontWeight.w900,
               fontFamily: 'JetBrains Mono',
             ),
           ),
-          const Text('CALIFICACIÓN: EXCELENTE', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          const Text(
+            'CALIFICACIÓN DEL CLIENTE: EXCELENTE',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white70),
+          ),
         ],
       ),
     );
@@ -60,12 +116,15 @@ class BureauCheckScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('NIVEL DE RIESGO', style: theme.textTheme.labelLarge),
+        Text(
+          'NIVEL DE RIESGO SBS',
+          style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontSize: 11, letterSpacing: 1),
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
-            _RiskBar(color: AppColors.secondary, isActive: true, label: 'BAJO'),
-            _RiskBar(color: AppColors.warning, isActive: false, label: 'MEDIO'),
+            _RiskBar(color: const Color(0xFF00C853), isActive: true, label: 'BAJO'),
+            _RiskBar(color: const Color(0xFFFFD600), isActive: false, label: 'MEDIO'),
             _RiskBar(color: AppColors.critical, isActive: false, label: 'ALTO'),
           ],
         ),
@@ -77,10 +136,13 @@ class BureauCheckScreen extends StatelessWidget {
     return AgroCard(
       child: Column(
         children: [
-          _DetailRow('DEUDAS VIGENTES', 'S/ 2,400.00'),
-          _DetailRow('ATRASO MÁXIMO', '0 DÍAS'),
-          _DetailRow('ENTIDADES', '3 BANCOS'),
-          _DetailRow('JUDICIALES', 'NINGUNO'),
+          _DetailRow('DEUDAS VIGENTES SISTEMA', 'S/ 2,400.00'),
+          const Divider(color: Colors.white10),
+          _DetailRow('ATRASO MÁXIMO REPORTADO', '0 DÍAS'),
+          const Divider(color: Colors.white10),
+          _DetailRow('ENTIDADES FINANCIERAS', '3 BANCOS'),
+          const Divider(color: Colors.white10),
+          _DetailRow('PROCESOS JUDICIALES / FRAUDES', 'NINGUNO'),
         ],
       ),
     );
@@ -88,12 +150,12 @@ class BureauCheckScreen extends StatelessWidget {
 
   Widget _DetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
         ],
       ),
     );
@@ -114,14 +176,30 @@ class _RiskBar extends StatelessWidget {
         children: [
           Container(
             height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
-              color: isActive ? color : color.withOpacity(0.2),
+              color: isActive ? color : color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(4),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 9, color: isActive ? color : Colors.white24)),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: isActive ? Colors.white : Colors.white24,
+            ),
+          ),
         ],
       ),
     );
