@@ -6,6 +6,8 @@ import '../../features/status/request_status_screen.dart';
 import '../../features/route/route_planning_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/loan_request/loan_simulator_screen.dart';
+import '../../features/client/prospect_evaluation_screen.dart';
+import '../../features/portfolio/recovery_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final String userCode;
@@ -23,12 +25,18 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const PortfolioScreen(),
-    const RoutePlanningScreen(),
-    const RequestStatusScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      PortfolioScreen(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+      RoutePlanningScreen(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+      RequestStatusScreen(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+    ];
+  }
 
   void _handleLogout() {
     // Simulated check for unsynced forms (HU-03 / RF-08)
@@ -82,6 +90,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -92,7 +101,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
+            child: Material(
               color: Colors.black.withOpacity(0.4),
               child: SafeArea(
                 child: Column(
@@ -235,6 +244,30 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               );
                             },
                           ),
+                          _buildDrawerItem(
+                            icon: Icons.fact_check_outlined,
+                            title: 'Pre-evaluación',
+                            subtitle: 'Prospección (M4)',
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const ProspectEvaluationScreen()),
+                              );
+                            },
+                          ),
+                          _buildDrawerItem(
+                            icon: Icons.assignment_late_outlined,
+                            title: 'Cobranza y Mora',
+                            subtitle: 'Recuperación cartera (M10)',
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RecoveryScreen()),
+                              );
+                            },
+                          ),
                           
                           // Supervisor extra features
                           if (widget.userRole == 'Supervisor' || widget.userRole == 'Administrador') ...[
@@ -280,8 +313,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     // Logout
                     Container(
                       padding: const EdgeInsets.all(16),
-                      border: const Border(
-                        top: BorderSide(color: Colors.white10, width: 1),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.white10, width: 1),
+                        ),
                       ),
                       child: OutlinedButton.icon(
                         onPressed: _handleLogout,

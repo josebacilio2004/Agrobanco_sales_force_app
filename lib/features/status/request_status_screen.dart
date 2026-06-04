@@ -4,9 +4,11 @@ import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RequestStatusScreen extends StatefulWidget {
-  const RequestStatusScreen({super.key});
+  final VoidCallback? onMenuPressed;
+  const RequestStatusScreen({super.key, this.onMenuPressed});
 
   @override
   State<RequestStatusScreen> createState() => _RequestStatusScreenState();
@@ -16,47 +18,81 @@ class _RequestStatusScreenState extends State<RequestStatusScreen> with SingleTi
   late TabController _tabController;
   final List<String> _tabNames = ['Enviadas', 'En Comité', 'Aprobadas', 'Desembolsadas', 'Rechazadas'];
   
-  // Mock requests data
-  final List<Map<String, dynamic>> _requests = [
-    {
-      'id': 'EXP-2026-001',
-      'name': 'JUAN PEREZ RAMOS',
-      'amount': 'S/ 15,000.00',
-      'status': 'En Comité',
-      'date': 'Enviado hace 2 horas',
-      'color': const Color(0xFFFFD600),
-      'progress': 0.4,
-      'analyst': 'Ing. Carlos Mendoza',
-      'notes': ['Cliente cuenta con aval de riego.', 'Firma digital validada.']
-    },
-    {
-      'id': 'EXP-2026-002',
-      'name': 'MARIA QUISPE SOTO',
-      'amount': 'S/ 8,500.00',
-      'status': 'Aprobadas',
-      'date': 'Pendiente desembolso',
-      'color': const Color(0xFF00C853),
-      'progress': 0.8,
-      'analyst': 'Dra. Elena Ramos',
-      'notes': []
-    },
-    {
-      'id': 'EXP-2026-003',
-      'name': 'CARLOS HUAMAN DIAZ',
-      'amount': 'S/ 22,000.00',
-      'status': 'Desembolsadas',
-      'date': 'Completado 15/05/2026',
-      'color': AppColors.primary,
-      'progress': 1.0,
-      'analyst': 'Ing. Julio Flores',
-      'notes': ['Monto desembolsado en caja Huancayo.']
-    },
-  ];
+  List<Map<String, dynamic>> _requests = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabNames.length, vsync: this);
+    _fetchRequests();
+  }
+
+  Future<void> _fetchRequests() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('request_statuses').get();
+      if (snap.docs.isNotEmpty) {
+        setState(() {
+          _requests = snap.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': data['id'],
+              'name': data['name'],
+              'amount': data['amount'],
+              'status': data['status'],
+              'date': data['date'],
+              'color': Color(data['colorValue'] as int),
+              'progress': (data['progress'] as num).toDouble(),
+              'analyst': data['analyst'],
+              'notes': List<String>.from(data['notes'] as List),
+            };
+          }).toList();
+        });
+      } else {
+        _loadDefaultRequests();
+      }
+    } catch (e) {
+      _loadDefaultRequests();
+    }
+  }
+
+  void _loadDefaultRequests() {
+    setState(() {
+      _requests = [
+        {
+          'id': 'EXP-2026-001',
+          'name': 'JUAN PEREZ RAMOS',
+          'amount': 'S/ 15,000.00',
+          'status': 'En Comité',
+          'date': 'Enviado hace 2 horas',
+          'color': const Color(0xFFFFD600),
+          'progress': 0.4,
+          'analyst': 'Ing. Carlos Mendoza',
+          'notes': ['Cliente cuenta con aval de riego.', 'Firma digital validada.']
+        },
+        {
+          'id': 'EXP-2026-002',
+          'name': 'MARIA QUISPE SOTO',
+          'amount': 'S/ 8,500.00',
+          'status': 'Aprobadas',
+          'date': 'Pendiente desembolso',
+          'color': const Color(0xFF00C853),
+          'progress': 0.8,
+          'analyst': 'Dra. Elena Ramos',
+          'notes': []
+        },
+        {
+          'id': 'EXP-2026-003',
+          'name': 'CARLOS HUAMAN DIAZ',
+          'amount': 'S/ 22,000.00',
+          'status': 'Desembolsadas',
+          'date': 'Completado 15/05/2026',
+          'color': AppColors.primary,
+          'progress': 1.0,
+          'analyst': 'Ing. Julio Flores',
+          'notes': ['Monto desembolsado en caja Huancayo.']
+        },
+      ];
+    });
   }
 
   @override
@@ -214,6 +250,10 @@ class _RequestStatusScreenState extends State<RequestStatusScreen> with SingleTi
         title: const Text('ESTADO DE SOLICITUDES'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed ?? () => Scaffold.of(context).openDrawer(),
+        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

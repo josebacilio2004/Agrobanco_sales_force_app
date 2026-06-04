@@ -7,9 +7,11 @@ import '../../shared/widgets/glass_background.dart';
 import '../client/client_details_screen.dart';
 import '../loan_request/loan_request_screen.dart';
 import 'client_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PortfolioScreen extends StatefulWidget {
-  const PortfolioScreen({super.key});
+  final VoidCallback? onMenuPressed;
+  const PortfolioScreen({super.key, this.onMenuPressed});
 
   @override
   State<PortfolioScreen> createState() => _PortfolioScreenState();
@@ -23,7 +25,37 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   @override
   void initState() {
     super.initState();
-    _resetMockData();
+    _clients = [];
+    _fetchClientsFromFirestore();
+  }
+
+  Future<void> _fetchClientsFromFirestore() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('clients').get();
+      if (snap.docs.isNotEmpty) {
+        setState(() {
+          _clients = snap.docs.map((doc) {
+            final data = doc.data();
+            return Client(
+              id: data['id'] as String,
+              name: data['name'] as String,
+              dni: data['dni'] as String,
+              status: data['status'] as String,
+              loanAmount: (data['loanAmount'] as num).toDouble(),
+              dueDate: DateTime.parse(data['dueDate'] as String),
+              location: data['location'] as String,
+              priority: data['priority'] as String,
+              isVisited: data['isVisited'] as bool,
+            );
+          }).toList();
+        });
+      } else {
+        _resetMockData();
+      }
+    } catch (e) {
+      debugPrint("Error fetching from Firestore, falling back to mock: $e");
+      _resetMockData();
+    }
   }
 
   void _resetMockData() {
@@ -98,10 +130,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      _resetMockData();
-    });
+    await _fetchClientsFromFirestore();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -241,11 +270,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         title: const Text('CARTERA DIARIA'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onMenuPressed ?? () => Scaffold.of(context).openDrawer(),
         ),
         actions: [
           IconButton(
@@ -268,10 +295,14 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '$totalClients Clientes · $visitedClients Visitados · $pendingClients Pendientes',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                        Expanded(
+                          child: Text(
+                            '$totalClients Clientes · $visitedClients Visitados · $pendingClients Pendientes',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '${(progressVal * 100).toInt()}%',
                           style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7ED99E)),
@@ -402,22 +433,28 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      // Reorder handle placeholder
-                                      const Icon(Icons.drag_indicator, size: 18, color: Colors.white24),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        client.name.toUpperCase(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: client.isVisited ? Colors.white38 : AppColors.primary,
-                                          decoration: client.isVisited ? TextDecoration.lineThrough : null,
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        // Reorder handle placeholder
+                                        const Icon(Icons.drag_indicator, size: 18, color: Colors.white24),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            client.name.toUpperCase(),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: client.isVisited ? Colors.white38 : AppColors.primary,
+                                              decoration: client.isVisited ? TextDecoration.lineThrough : null,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   _buildTypeChip(client.status),
                                 ],
                               ),
