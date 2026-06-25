@@ -5,6 +5,8 @@ import '../../shared/widgets/agro_card.dart';
 import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import '../../core/network/api_client.dart';
 
 class RequestStatusScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -29,21 +31,21 @@ class _RequestStatusScreenState extends State<RequestStatusScreen> with SingleTi
 
   Future<void> _fetchRequests() async {
     try {
-      final snap = await FirebaseFirestore.instance.collection('request_statuses').get();
-      if (snap.docs.isNotEmpty) {
+      final response = await ApiClient.get('/fv/solicitudes');
+      if (response.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(response.body);
         setState(() {
-          _requests = snap.docs.map((doc) {
-            final data = doc.data();
+          _requests = list.map((item) {
             return {
-              'id': data['id'],
-              'name': data['name'],
-              'amount': data['amount'],
-              'status': data['status'],
-              'date': data['date'],
-              'color': Color(data['colorValue'] as int),
-              'progress': (data['progress'] as num).toDouble(),
-              'analyst': data['analyst'],
-              'notes': List<String>.from(data['notes'] as List),
+              'id': item['id'],
+              'name': item['name'],
+              'amount': item['amount'],
+              'status': item['status'],
+              'date': item['date'],
+              'color': Color(item['colorValue'] as int),
+              'progress': (item['progress'] as num).toDouble(),
+              'analyst': item['analyst'],
+              'notes': List<String>.from(item['notes'] as List),
             };
           }).toList();
         });

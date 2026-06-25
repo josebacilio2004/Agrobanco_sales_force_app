@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
@@ -6,6 +7,7 @@ import '../../shared/widgets/agro_button.dart';
 import '../../shared/widgets/glass_background.dart';
 import '../../shared/widgets/main_navigation_screen.dart';
 import '../../core/database/firebase_seeder.dart';
+import '../../core/network/api_client.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,13 +35,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _startLockTimer() {
+  void _startLockTimer(int seconds) {
     setState(() {
       _isLocked = true;
-      _lockSecondsRemaining = 1800; // 30 minutes in seconds
+      _lockSecondsRemaining = seconds;
       _errorMessage = 'Cuenta bloqueada por seguridad.';
     });
 
+    _lockTimer?.cancel();
     _lockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_lockSecondsRemaining > 0) {
         setState(() {
@@ -62,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_isLocked) return;
 
     final code = _codeController.text.trim();
@@ -75,7 +78,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Validate that employee code is purely numeric
     if (int.tryParse(code) == null) {
       setState(() {
         _errorMessage = 'El código de empleado debe ser numérico.';
@@ -83,36 +85,56 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Simulation logic:
-    // Success: code is '1001' (Operador), '2002' (Supervisor), or '3003' (Administrador).
-    // Any other code will fail and increment failed attempts.
-    if ((code == '1001' || code == '2002' || code == '3003') && password == 'agrobanco') {
-      setState(() {
-        _errorMessage = null;
-        _failedAttempts = 0;
+    setState(() {
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await ApiClient.post('/auth/login', {
+        'username': code,
+        'password': password
       });
 
-      // Save role profile to navigate
-      String profileRole = 'Operador';
-      if (code == '2002') profileRole = 'Supervisor';
-      if (code == '3003') profileRole = 'Administrador';
+      final Map<String, dynamic> body = jsonDecode(response.body);
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => MainNavigationScreen(
-            userCode: code,
-            userRole: profileRole,
+      if (response.statusCode == 200) {
+        final token = body['token'] as String;
+        final role = body['role'] as String;
+        final username = body['username'] as String;
+        final fullName = body['fullName'] as String;
+
+        // Save JWT locally
+        await ApiClient.saveToken(token);
+
+        String profileRole = 'Operador';
+        if (role == 'supervisor') profileRole = 'Supervisor';
+        if (role == 'administrador') profileRole = 'Administrador';
+
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => MainNavigationScreen(
+              userCode: username,
+              userRole: profileRole,
+            ),
           ),
-        ),
-      );
-    } else {
+        );
+      } else if (response.statusCode == 403) {
+        // Locked account
+        final detail = body['detail'] as String;
+        setState(() {
+          _errorMessage = detail;
+        });
+        _startLockTimer(1800); // Start 30 min timer
+      } else {
+        final detail = body['detail'] as String? ?? 'Error de inicio de sesión';
+        setState(() {
+          _errorMessage = detail;
+        });
+      }
+    } catch (e) {
       setState(() {
-        _failedAttempts++;
-        if (_failedAttempts >= 5) {
-          _startLockTimer();
-        } else {
-          _errorMessage = 'Credenciales incorrectas. Intento $_failedAttempts de 5.';
-        }
+        _errorMessage = 'Error de conexión: No se pudo conectar al servidor.';
       });
     }
   }

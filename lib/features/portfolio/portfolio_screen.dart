@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/agro_card.dart';
@@ -7,7 +8,7 @@ import '../../shared/widgets/glass_background.dart';
 import '../client/client_details_screen.dart';
 import '../loan_request/loan_request_screen.dart';
 import 'client_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/network/api_client.dart';
 
 class PortfolioScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -31,21 +32,21 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   Future<void> _fetchClientsFromFirestore() async {
     try {
-      final snap = await FirebaseFirestore.instance.collection('clients').get();
-      if (snap.docs.isNotEmpty) {
+      final response = await ApiClient.get('/fv/cartera');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _clients = snap.docs.map((doc) {
-            final data = doc.data();
+          _clients = data.map((json) {
             return Client(
-              id: data['id'] as String,
-              name: data['name'] as String,
-              dni: data['dni'] as String,
-              status: data['status'] as String,
-              loanAmount: (data['loanAmount'] as num).toDouble(),
-              dueDate: DateTime.parse(data['dueDate'] as String),
-              location: data['location'] as String,
-              priority: data['priority'] as String,
-              isVisited: data['isVisited'] as bool,
+              id: json['id'] as String,
+              name: json['name'] as String,
+              dni: json['dni'] as String,
+              status: json['status'] as String,
+              loanAmount: (json['loanAmount'] as num).toDouble(),
+              dueDate: DateTime.parse(json['dueDate'] as String),
+              location: json['location'] as String,
+              priority: json['priority'] as String,
+              isVisited: json['isVisited'] as bool,
             );
           }).toList();
         });
@@ -53,7 +54,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         _resetMockData();
       }
     } catch (e) {
-      debugPrint("Error fetching from Firestore, falling back to mock: $e");
+      debugPrint("Error fetching from API, falling back to mock: $e");
       _resetMockData();
     }
   }
