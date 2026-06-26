@@ -13,6 +13,14 @@ export default function ClientWorkspace({
   const [details, setDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Reniec state
+  const [reniecData, setReniecData] = useState(null);
+  const [isReniecLoading, setIsReniecLoading] = useState(false);
+
+  // Route state
+  const [routeData, setRouteData] = useState(null);
+  const [isRouteLoading, setIsRouteLoading] = useState(false);
+
   // Step 2 state
   const [buroReport, setBuroReport] = useState(null);
   const [isBuroLoading, setIsBuroLoading] = useState(false);
@@ -41,6 +49,8 @@ export default function ClientWorkspace({
     setBuroReport(null);
     setIsVisitCompleted(false);
     setFirmaUrl("");
+    setReniecData(null);
+    setRouteData(null);
 
     // Set coordinate presets
     if (selectedClient.dni === "40118120") {
@@ -109,6 +119,53 @@ export default function ClientWorkspace({
       showToast("No se pudo conectar con el buró financiero.", "error");
     } finally {
       setIsBuroLoading(false);
+    }
+  };
+
+  // STEP 1: Consultar RENIEC
+  const handleConsultarReniec = async () => {
+    setIsReniecLoading(true);
+    setReniecData(null);
+    try {
+      const res = await fetch(`${apiUrl}/fv/reniec/${selectedClient.dni}`, {
+        headers: { Authorization: `Bearer ${advisorToken}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setReniecData(data.data);
+        showToast("Datos de identidad recuperados de RENIEC con éxito", "success");
+      } else {
+        showToast(data.detail || "Error al consultar RENIEC en el core", "error");
+      }
+    } catch (err) {
+      showToast("Error de conexión al consultar servicio RENIEC", "error");
+    } finally {
+      setIsReniecLoading(false);
+    }
+  };
+
+  // STEP 3: Calcular Ruta Google Maps Directions
+  const handleCalcularRuta = async () => {
+    setIsRouteLoading(true);
+    setRouteData(null);
+    try {
+      const res = await fetch(
+        `${apiUrl}/fv/ruta/calcular?destination=${latVisita},${lngVisita}`,
+        {
+          headers: { Authorization: `Bearer ${advisorToken}` },
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setRouteData(data);
+        showToast("Logística de ruta calculada con Google Maps", "success");
+      } else {
+        showToast(data.detail || "No se pudo obtener información de la ruta", "error");
+      }
+    } catch (err) {
+      showToast("Error de conexión con el servicio de geolocalización", "error");
+    } finally {
+      setIsRouteLoading(false);
     }
   };
 
@@ -308,6 +365,38 @@ export default function ClientWorkspace({
               </span>
             </div>
           </div>
+
+          <div className="border-t border-[#243648]/20 pt-4 mt-4 space-y-3">
+            {reniecData ? (
+              <div className="p-3.5 bg-success/10 border border-success/20 rounded-xl text-xs space-y-1.5 text-slate-300 animate-fade-in">
+                <div className="flex items-center gap-1.5 font-bold text-success">
+                  <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                  Identidad Verificada por RENIEC
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-3.5 mt-1 font-mono text-[11px]">
+                  <p><span className="text-slate-500 font-sans font-bold">Nombres:</span> {reniecData.nombres}</p>
+                  <p><span className="text-slate-500 font-sans font-bold">Apellido Paterno:</span> {reniecData.apellidoPaterno}</p>
+                  <p><span className="text-slate-500 font-sans font-bold">Apellido Materno:</span> {reniecData.apellidoMaterno}</p>
+                  <p><span className="text-slate-500 font-sans font-bold">Dígito Verif:</span> {reniecData.digitoVerificador}</p>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleConsultarReniec}
+                disabled={isReniecLoading}
+                className="bg-[#1A5F7A]/25 border border-primary/20 hover:bg-[#1A5F7A]/40 text-primary font-black py-2.5 px-4 rounded-xl text-[10.5px] flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                {isReniecLoading ? (
+                  <span className="animate-spin h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                )}
+                CONSULTAR VALIDACIÓN DE IDENTIDAD EN RENIEC
+              </button>
+            )}
+          </div>
         </div>
 
         {/* STEP 2: SBS Credit Bureau Check */}
@@ -424,23 +513,63 @@ export default function ClientWorkspace({
                 />
               </div>
 
-              {!isVisitCompleted ? (
+              <div className="flex flex-wrap gap-3">
+                {!isVisitCompleted && (
+                  <button
+                    onClick={handleRegistrarVisita}
+                    disabled={isVisitLoading}
+                    className="bg-primary-container/20 border border-primary/45 hover:bg-primary-container/30 text-primary font-black py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    {isVisitLoading ? (
+                      <span className="animate-spin h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full" />
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                    REGISTRAR COORDENADAS GPS
+                  </button>
+                )}
+
                 <button
-                  onClick={handleRegistrarVisita}
-                  disabled={isVisitLoading}
-                  className="bg-primary-container/20 border border-primary/45 hover:bg-primary-container/30 text-primary font-black py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+                  onClick={handleCalcularRuta}
+                  disabled={isRouteLoading}
+                  className="bg-surface-variant/40 border border-[#243648] hover:border-primary/45 text-slate-300 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-colors"
                 >
-                  {isVisitLoading ? (
-                    <span className="animate-spin h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full" />
+                  {isRouteLoading ? (
+                    <span className="animate-spin h-3.5 w-3.5 border-2 border-slate-300 border-t-transparent rounded-full" />
                   ) : (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                   )}
-                  REGISTRAR COORDENADAS GPS
+                  CALCULAR RUTA GOOGLE MAPS
                 </button>
-              ) : (
+              </div>
+
+              {routeData && (
+                <div className="p-4 bg-primary-container/10 border border-primary/20 rounded-xl space-y-2 text-xs text-slate-300 animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-primary border-b border-primary/10 pb-1.5">
+                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Información de Ruta (Google Maps)
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pl-1 font-mono text-[11px]">
+                    <p><span className="text-slate-500 font-sans font-bold">Distancia:</span> {routeData.distance}</p>
+                    <p><span className="text-slate-500 font-sans font-bold">Tiempo estimado:</span> {routeData.duration}</p>
+                  </div>
+                  <p className="text-[10px] text-slate-400 pl-1">
+                    <span className="font-bold text-slate-500">Partida (Agencia):</span> {routeData.start_address}
+                  </p>
+                  <p className="text-[10px] text-slate-400 pl-1">
+                    <span className="font-bold text-slate-500">Destino (Negocio):</span> {routeData.end_address}
+                  </p>
+                </div>
+              )}
+
+              {isVisitCompleted && (
                 <div className="bg-success/10 border border-success/20 text-success p-3 rounded-xl flex items-center gap-2">
                   <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

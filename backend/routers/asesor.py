@@ -324,3 +324,64 @@ def get_solicitudes(advisor: models.AsesorNegocio = Depends(get_current_advisor)
         
     return res_list
 
+
+@router.get("/reniec/{dni}")
+def consultar_reniec(dni: str, advisor: models.AsesorNegocio = Depends(get_current_advisor)):
+    token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImpmY2M5NTAxMjMwOUBnbWFpbC5jb20ifQ.UaK6eecpbt-mVnF9hI-BYSHtl6QQ5hCLU1MNItWe9P8'"
+    url = f"https://dniruc.apisperu.com/api/v1/dni/{dni}?token={token}"
+    import urllib.request
+    import json
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                if "nombres" in data or "nombre" in data:
+                    return {"success": True, "data": data}
+                return {"success": False, "detail": "DNI no encontrado o error en respuesta", "raw": data}
+            else:
+                return {"success": False, "detail": f"APIsPeru respondió con código {response.status}"}
+    except Exception as e:
+        return {"success": False, "detail": f"Error de red o token expirado: {str(e)}"}
+
+
+@router.get("/ruta/calcular")
+def calcular_ruta(destination: str, origin: str = None, advisor: models.AsesorNegocio = Depends(get_current_advisor)):
+    import urllib.request
+    import json
+    import urllib.parse
+    
+    if not origin:
+        origin = "-12.0681,-75.2027"  # Coordenadas por defecto de la Agencia Huancayo
+        
+    key = "AIzaSyBIZrptkE0IGakPhzMzMpq4PaW_gw_D1vk"
+    origin_enc = urllib.parse.quote(origin)
+    dest_enc = urllib.parse.quote(destination)
+    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={origin_enc}&destination={dest_enc}&key={key}&mode=driving"
+    
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                routes = data.get("routes", [])
+                if routes:
+                    leg = routes[0].get("legs", [{}])[0]
+                    distance = leg.get("distance", {}).get("text", "N/D")
+                    duration = leg.get("duration", {}).get("text", "N/D")
+                    start_address = leg.get("start_address", "")
+                    end_address = leg.get("end_address", "")
+                    return {
+                        "success": True,
+                        "distance": distance,
+                        "duration": duration,
+                        "start_address": start_address,
+                        "end_address": end_address
+                    }
+                return {"success": False, "detail": "No se encontraron rutas", "status": data.get("status")}
+            else:
+                return {"success": False, "detail": f"Google API respondió con código {response.status}"}
+    except Exception as e:
+        return {"success": False, "detail": f"Error de conexión con Google API: {str(e)}"}
+
+
