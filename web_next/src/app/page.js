@@ -60,6 +60,23 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [apiUrl]);
 
+  // Refetch data immediately and poll every 10 seconds when logged in or API URL changes
+  useEffect(() => {
+    if (!advisorToken) return;
+
+    // Fetch immediately
+    fetchCartera(advisorToken);
+    fetchAdvisorData(advisorToken);
+
+    // Poll every 10 seconds
+    const pollInterval = setInterval(() => {
+      fetchCartera(advisorToken);
+      fetchAdvisorData(advisorToken);
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
+  }, [apiUrl, advisorToken]);
+
   // Seeder trigger
   const handleSeed = async () => {
     setIsSeeding(true);
