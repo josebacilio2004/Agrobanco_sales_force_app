@@ -73,6 +73,7 @@ def read_root():
         "api": "Banco Andino Core API",
         "port": 8003,
         "database": engine.name,
+        "version": "1.0.1 - migration_fix",
         "message": "Bienvenido al núcleo transaccional integrado de Banco Andino."
     }
 
