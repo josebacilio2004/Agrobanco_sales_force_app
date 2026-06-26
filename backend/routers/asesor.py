@@ -39,55 +39,63 @@ def get_current_advisor(credentials: HTTPAuthorizationCredentials = Depends(secu
 
 @router.get("/cartera")
 def get_cartera(advisor: models.AsesorNegocio = Depends(get_current_advisor), db: Session = Depends(get_db)):
-    # Fetch all clients
-    clients = db.query(models.Cliente).all()
-    
-    cartera_items = []
-    for client in clients:
-        # Check if client has a pending or active credit application assigned to this advisor
-        # (or unassigned because registered by client)
-        active_req = db.query(models.SolicitudCredito).filter(
-            models.SolicitudCredito.cliente_id == client.id,
-            models.SolicitudCredito.estado.in_(["enviado", "recibido_comite", "en_evaluacion"])
-        ).first()
+    try:
+        # Fetch all clients
+        clients = db.query(models.Cliente).all()
         
-        # Check if they have overdue credits for recovery
-        overdue_credit = db.query(models.Credito).filter(
-            models.Credito.cliente_id == client.id,
-            models.Credito.estado == "vencido"
-        ).first()
-        
-        # Default status/priorities based on cases metadata
-        meta = CASES_METADATA.get(client.numero_documento, {})
-        
-        status_fv = "SEGUIMIENTO"
-        priority = "NORMAL"
-        is_visited = False
-        
-        if active_req:
-            status_fv = "NUEVA_SOLICITUD"
-            priority = "ALTA" if meta.get("monto_solicitado", 0.0) >= 10000.0 else "NORMAL"
-            is_visited = active_req.lat_visita is not None
-        elif overdue_credit:
-            status_fv = "RECUPERACIÓN MORA"
-            priority = "ALTA"
-        elif meta.get("decision") == "APROBADO":
-            status_fv = "RENOVACIÓN"
-            priority = "MEDIA"
+        cartera_items = []
+        for client in clients:
+            # Check if client has a pending or active credit application assigned to this advisor
+            # (or unassigned because registered by client)
+            active_req = db.query(models.SolicitudCredito).filter(
+                models.SolicitudCredito.cliente_id == client.id,
+                models.SolicitudCredito.estado.in_(["enviado", "recibido_comite", "en_evaluacion"])
+            ).first()
             
-        cartera_items.append({
-            "id": client.id,
-            "name": f"{client.nombres} {client.apellidos}",
-            "dni": client.numero_documento,
-            "status": status_fv,
-            "loanAmount": meta.get("monto_solicitado", 5000.0),
-            "dueDate": (datetime.datetime.now() + datetime.timedelta(days=15)).strftime("%Y-%m-%dT%H:%M:%S"),
-            "location": client.direccion,
-            "priority": priority,
-            "isVisited": is_visited
-        })
-        
-    return cartera_items
+            # Check if they have overdue credits for recovery
+            overdue_credit = db.query(models.Credito).filter(
+                models.Credito.cliente_id == client.id,
+                models.Credito.estado == "vencido"
+            ).first()
+            
+            # Default status/priorities based on cases metadata
+            meta = CASES_METADATA.get(client.numero_documento, {})
+            
+            status_fv = "SEGUIMIENTO"
+            priority = "NORMAL"
+            is_visited = False
+            
+            if active_req:
+                status_fv = "NUEVA_SOLICITUD"
+                priority = "ALTA" if meta.get("monto_solicitado", 0.0) >= 10000.0 else "NORMAL"
+                is_visited = active_req.lat_visita is not None
+            elif overdue_credit:
+                status_fv = "RECUPERACIÓN MORA"
+                priority = "ALTA"
+            elif meta.get("decision") == "APROBADO":
+                status_fv = "RENOVACIÓN"
+                priority = "MEDIA"
+                
+            cartera_items.append({
+                "id": client.id,
+                "name": f"{client.nombres} {client.apellidos}",
+                "dni": client.numero_documento,
+                "status": status_fv,
+                "loanAmount": meta.get("monto_solicitado", 5000.0),
+                "dueDate": (datetime.datetime.now() + datetime.timedelta(days=15)).strftime("%Y-%m-%dT%H:%M:%S"),
+                "location": client.direccion,
+                "priority": priority,
+                "isVisited": is_visited
+            })
+            
+        return cartera_items
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error details: {str(e)} | Traceback: {tb}"
+        )
 
 @router.get("/cliente/{dni_or_id}")
 def get_client_details(dni_or_id: str, advisor: models.AsesorNegocio = Depends(get_current_advisor), db: Session = Depends(get_db)):
