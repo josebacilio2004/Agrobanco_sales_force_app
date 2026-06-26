@@ -8,13 +8,7 @@ class ApiClient {
   static const _storage = FlutterSecureStorage();
   
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:8003';
-    try {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:8003'; // Android emulator localhost bridge
-      }
-    } catch (_) {}
-    return 'http://localhost:8003';
+    return 'https://agrobanco-api.onrender.com';
   }
 
   static Future<void> saveToken(String token) async {
