@@ -12,22 +12,51 @@ import models
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
 
-# Dynamic schema migration: ensure 'dias_mora' column exists in 'creditos' table (brute-force approach)
+# Dynamic schema migration: ensure all columns defined in models exist in the database tables
 try:
-    from sqlalchemy import text
-    with engine.begin() as conn:
-        if engine.name == "sqlite":
-            try:
-                conn.execute(text("ALTER TABLE creditos ADD COLUMN dias_mora INTEGER DEFAULT 0"))
-                print("Migration: added column dias_mora to creditos (SQLite)")
-            except Exception:
-                pass
-        elif engine.name == "postgresql":
-            try:
-                conn.execute(text("ALTER TABLE creditos ADD COLUMN dias_mora INTEGER DEFAULT 0"))
-                print("Migration: added column dias_mora to creditos (PostgreSQL)")
-            except Exception as e:
-                print(f"PostgreSQL Migration warning (expected if column already exists): {e}")
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    
+    def get_column_sql_type(col_type_obj, dialect_name):
+        col_type_str = str(col_type_obj).upper()
+        if "DATETIME" in col_type_str or "TIMESTAMP" in col_type_str:
+            return "TIMESTAMP"
+        if "DATE" in col_type_str:
+            return "DATE"
+        if "VARCHAR" in col_type_str or "STRING" in col_type_str:
+            return col_type_str
+        if "INTEGER" in col_type_str or "INT" in col_type_str:
+            return "INTEGER"
+        if "FLOAT" in col_type_str or "REAL" in col_type_str or "DOUBLE" in col_type_str:
+            return "DOUBLE PRECISION" if dialect_name == "postgresql" else "REAL"
+        if "BOOLEAN" in col_type_str or "BOOL" in col_type_str:
+            return "BOOLEAN"
+        return col_type_str
+
+    for table_name, table in Base.metadata.tables.items():
+        if table_name in inspector.get_table_names():
+            db_columns = [col["name"] for col in inspector.get_columns(table_name)]
+            for col in table.columns:
+                if col.name not in db_columns:
+                    col_type_str = get_column_sql_type(col.type, engine.name)
+                    alter_query = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type_str}"
+                    
+                    # Handle basic defaults
+                    if col.default is not None and hasattr(col.default, 'arg'):
+                        val = col.default.arg
+                        if isinstance(val, (int, float)):
+                            alter_query += f" DEFAULT {val}"
+                        elif isinstance(val, str):
+                            alter_query += f" DEFAULT '{val}'"
+                        elif isinstance(val, bool):
+                            alter_query += f" DEFAULT {str(val).upper()}"
+                            
+                    try:
+                        with engine.begin() as conn:
+                            conn.execute(text(alter_query))
+                        print(f"Migration: added column {col.name} ({col_type_str}) to table {table_name}")
+                    except Exception as e:
+                        print(f"Migration failed for {table_name}.{col.name}: {e}")
 except Exception as e:
     print(f"Schema migration error: {e}")
 
@@ -72,7 +101,7 @@ def read_root():
         "api": "Banco Andino Core API",
         "port": 8003,
         "database": engine.name,
-        "version": "1.0.3 - diagnostic_cartera",
+        "version": "1.0.4 - auto_schema_migration",
         "message": "Bienvenido al núcleo transaccional integrado de Banco Andino."
     }
 
