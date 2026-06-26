@@ -12,25 +12,24 @@ import models
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
 
-# Dynamic schema migration: ensure 'dias_mora' column exists in 'creditos' table
+# Dynamic schema migration: ensure 'dias_mora' column exists in 'creditos' table (brute-force approach)
 try:
     from sqlalchemy import text
     with engine.begin() as conn:
         if engine.name == "sqlite":
-            cursor = conn.execute(text("PRAGMA table_info(creditos)"))
-            columns = [row[1] for row in cursor.fetchall()]
-            if "dias_mora" not in columns:
+            try:
                 conn.execute(text("ALTER TABLE creditos ADD COLUMN dias_mora INTEGER DEFAULT 0"))
                 print("Migration: added column dias_mora to creditos (SQLite)")
+            except Exception:
+                pass
         elif engine.name == "postgresql":
-            cursor = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name='creditos' AND column_name='dias_mora'"
-            ))
-            if not cursor.fetchone():
+            try:
                 conn.execute(text("ALTER TABLE creditos ADD COLUMN dias_mora INTEGER DEFAULT 0"))
                 print("Migration: added column dias_mora to creditos (PostgreSQL)")
+            except Exception as e:
+                print(f"PostgreSQL Migration warning (expected if column already exists): {e}")
 except Exception as e:
-    print(f"Schema migration warning: {e}")
+    print(f"Schema migration error: {e}")
 
 app = FastAPI(
     title="Banco Andino Core Mobile & Transactional API",
@@ -73,7 +72,7 @@ def read_root():
         "api": "Banco Andino Core API",
         "port": 8003,
         "database": engine.name,
-        "version": "1.0.1 - migration_fix",
+        "version": "1.0.2 - brute_force_migration",
         "message": "Bienvenido al núcleo transaccional integrado de Banco Andino."
     }
 
