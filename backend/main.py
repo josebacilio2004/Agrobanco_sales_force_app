@@ -12,6 +12,26 @@ import models
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
 
+# Dynamic schema migration: ensure 'dias_mora' column exists in 'creditos' table
+try:
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        if engine.name == "sqlite":
+            cursor = conn.execute(text("PRAGMA table_info(creditos)"))
+            columns = [row[1] for row in cursor.fetchall()]
+            if "dias_mora" not in columns:
+                conn.execute(text("ALTER TABLE creditos ADD COLUMN dias_mora INTEGER DEFAULT 0"))
+                print("Migration: added column dias_mora to creditos (SQLite)")
+        elif engine.name == "postgresql":
+            cursor = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='creditos' AND column_name='dias_mora'"
+            ))
+            if not cursor.fetchone():
+                conn.execute(text("ALTER TABLE creditos ADD COLUMN dias_mora INTEGER DEFAULT 0"))
+                print("Migration: added column dias_mora to creditos (PostgreSQL)")
+except Exception as e:
+    print(f"Schema migration warning: {e}")
+
 app = FastAPI(
     title="Banco Andino Core Mobile & Transactional API",
     description="Backend unificado para conectar Fuerza de Ventas y Homebanking Móvil.",
