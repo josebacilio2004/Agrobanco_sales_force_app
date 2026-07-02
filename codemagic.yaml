@@ -21,11 +21,6 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      - name: Install CocoaPods
-        script: |
-          cd ios
-          pod install --repo-update
-
       - name: Build IPA without code signing
         script: |
           flutter build ios --debug --no-codesign --build-name=1.0.0 --build-number=1
