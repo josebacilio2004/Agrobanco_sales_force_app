@@ -1,0 +1,46 @@
+workflows:
+  ios-sideload:
+    name: iOS IPA (Sideloadly / Development)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+      # Only needed if you want a signed IPA (requires Apple Developer account)
+      # vars:
+      #   APP_STORE_CONNECT_ISSUER_ID: ""
+      #   APP_STORE_CONNECT_KEY_IDENTIFIER: ""
+      #   APP_STORE_CONNECT_PRIVATE_KEY: ""
+      #   CERTIFICATE_PRIVATE_KEY: ""
+      #   GIT_BRANCH_DEV: main
+
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Install CocoaPods
+        script: |
+          cd ios
+          pod install --repo-update
+
+      - name: Build IPA without code signing
+        script: |
+          flutter build ios --debug --no-codesign --build-name=1.0.0 --build-number=1
+
+      - name: Create IPA payload for Sideloadly
+        script: |
+          mkdir -p build/ios_debug/Payload
+          cp -r build/ios/Debug-iphoneos/Runner.app build/ios_debug/Payload/
+          cd build/ios_debug
+          zip -r ../app-debug.ipa Payload/
+          rm -rf Payload
+
+    artifacts:
+      - build/app-debug.ipa
+      - build/ios/Debug-iphoneos/Runner.app.dSYM.zip
+
+    publishing:
+      email: ~
