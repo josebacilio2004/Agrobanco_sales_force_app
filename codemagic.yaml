@@ -21,25 +21,42 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      - name: Build without code signing
+      - name: Build with xcodebuild (bypass Flutter team validation)
         script: |
-          # Xcode build succeeds but Flutter may fail on post-build
-          # DEVELOPMENT_TEAM validation. We catch the error because
-          # the .app binary was already built successfully by xcodebuild.
-          flutter build ios --debug --no-codesign --build-name=1.0.0 --build-number=1 || true
+          # 1. Trigger SPM integration + pod install + first xcodebuild
+          #    (Flutter validation will fail, but xcodebuild itself succeeds)
+          flutter build ios --debug --no-codesign \
+            --build-name=1.0.0 --build-number=1 2>&1 || true
+
+          # 2. Find the real Runner.app in DerivedData (where xcodebuild left it)
+          DERIVED=~/Library/Developer/Xcode/DerivedData
+          APP=$(find "$DERIVED" -name "Runner.app" -path "*/Debug-iphoneos/*" \
+            -type d 2>/dev/null | head -1)
+
+          if [ -n "$APP" ]; then
+            echo "Found Runner.app at: $APP"
+            mkdir -p build/ios/Debug-iphoneos
+            rm -rf build/ios/Debug-iphoneos/Runner.app
+            cp -r "$APP" build/ios/Debug-iphoneos/Runner.app
+          else
+            echo "Runner.app not found in DerivedData — fallback to build output"
+          fi
 
       - name: Create IPA payload for Sideloadly
         script: |
-          if [ -d "build/ios/Debug-iphoneos/Runner.app" ]; then
+          TARGET="build/ios/Debug-iphoneos/Runner.app"
+          if [ -d "$TARGET" ]; then
+            APP_SIZE=$(du -sh "$TARGET" | cut -f1)
+            echo "Runner.app size: $APP_SIZE"
             mkdir -p build/ios_debug/Payload
-            cp -r build/ios/Debug-iphoneos/Runner.app build/ios_debug/Payload/
+            cp -r "$TARGET" build/ios_debug/Payload/
             cd build/ios_debug
             zip -r ../app-debug.ipa Payload/
             rm -rf Payload
             echo "IPA created successfully"
           else
-            echo "Runner.app not found — full build failed"
-            ls -la build/ios/Debug-iphoneos/ 2>/dev/null || echo "Debug-iphoneos dir missing"
+            echo "Runner.app not found"
+            ls -la build/ios/Debug-iphoneos/ 2>/dev/null || echo "dir missing"
             exit 1
           fi
 
