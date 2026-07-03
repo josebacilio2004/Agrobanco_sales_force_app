@@ -21,17 +21,27 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      - name: Build IPA without code signing
+      - name: Build without code signing
         script: |
-          flutter build ios --debug --no-codesign --build-name=1.0.0 --build-number=1
+          # Xcode build succeeds but Flutter may fail on post-build
+          # DEVELOPMENT_TEAM validation. We catch the error because
+          # the .app binary was already built successfully by xcodebuild.
+          flutter build ios --debug --no-codesign --build-name=1.0.0 --build-number=1 || true
 
       - name: Create IPA payload for Sideloadly
         script: |
-          mkdir -p build/ios_debug/Payload
-          cp -r build/ios/Debug-iphoneos/Runner.app build/ios_debug/Payload/
-          cd build/ios_debug
-          zip -r ../app-debug.ipa Payload/
-          rm -rf Payload
+          if [ -d "build/ios/Debug-iphoneos/Runner.app" ]; then
+            mkdir -p build/ios_debug/Payload
+            cp -r build/ios/Debug-iphoneos/Runner.app build/ios_debug/Payload/
+            cd build/ios_debug
+            zip -r ../app-debug.ipa Payload/
+            rm -rf Payload
+            echo "IPA created successfully"
+          else
+            echo "Runner.app not found — full build failed"
+            ls -la build/ios/Debug-iphoneos/ 2>/dev/null || echo "Debug-iphoneos dir missing"
+            exit 1
+          fi
 
     artifacts:
       - build/app-debug.ipa
