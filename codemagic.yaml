@@ -9,38 +9,27 @@ workflows:
       xcode: latest
       cocoapods: default
 
-      # Only needed if you want a signed IPA (requires Apple Developer account)
-      # vars:
-      #   APP_STORE_CONNECT_ISSUER_ID: ""
-      #   APP_STORE_CONNECT_KEY_IDENTIFIER: ""
-      #   APP_STORE_CONNECT_PRIVATE_KEY: ""
-      #   CERTIFICATE_PRIVATE_KEY: ""
-      #   GIT_BRANCH_DEV: main
-
     scripts:
       - name: Flutter pub get
         script: flutter pub get
 
-      - name: Build with xcodebuild (bypass Flutter team validation)
+      - name: First pass – SPM integration (will fail validation)
         script: |
-          # 1. Trigger SPM integration + pod install + first xcodebuild
-          #    (Flutter validation will fail, but xcodebuild itself succeeds)
           flutter build ios --debug --no-codesign \
             --build-name=1.0.0 --build-number=1 2>&1 || true
 
-          # 2. Find the real Runner.app in DerivedData (where xcodebuild left it)
-          DERIVED=~/Library/Developer/Xcode/DerivedData
-          APP=$(find "$DERIVED" -name "Runner.app" -path "*/Debug-iphoneos/*" \
-            -type d 2>/dev/null | head -1)
+      - name: Patch DEVELOPMENT_TEAM into pbxproj (survives SPM)
+        script: |
+          grep -q "DEVELOPMENT_TEAM" ios/Runner.xcodeproj/project.pbxproj || \
+          perl -i -pe \
+            'if (/CURRENT_PROJECT_VERSION = "\$\(FLUTTER_BUILD_NUMBER\)";/) { $_ .= "\t\t\t\tDEVELOPMENT_TEAM = AAAAAAAAAA;\n" }' \
+            ios/Runner.xcodeproj/project.pbxproj
+          echo "DEVELOPMENT_TEAM added to pbxproj"
 
-          if [ -n "$APP" ]; then
-            echo "Found Runner.app at: $APP"
-            mkdir -p build/ios/Debug-iphoneos
-            rm -rf build/ios/Debug-iphoneos/Runner.app
-            cp -r "$APP" build/ios/Debug-iphoneos/Runner.app
-          else
-            echo "Runner.app not found in DerivedData — fallback to build output"
-          fi
+      - name: Second pass – real build (validation passes now)
+        script: |
+          flutter build ios --debug --no-codesign \
+            --build-name=1.0.0 --build-number=1
 
       - name: Create IPA payload for Sideloadly
         script: |
