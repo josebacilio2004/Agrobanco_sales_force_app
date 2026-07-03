@@ -1,57 +1,27 @@
 workflows:
   ios-sideload:
-    name: iOS IPA (Sideloadly / Development)
-    max_build_duration: 60
+    name: iOS IPA (Sideloadly)
     instance_type: mac_mini_m2
-
+    max_build_duration: 60
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
-
     scripts:
-      - name: Flutter pub get
-        script: flutter pub get
-
-      - name: First pass – SPM integration (will fail validation)
+      - name: Clean and get dependencies
         script: |
-          flutter build ios --debug --no-codesign \
-            --build-name=1.0.0 --build-number=1 2>&1 || true
-
-      - name: Patch DEVELOPMENT_TEAM into pbxproj (survives SPM)
+          flutter clean
+          flutter pub get
+      - name: Build iOS without code signing
         script: |
-          grep -q "DEVELOPMENT_TEAM" ios/Runner.xcodeproj/project.pbxproj || \
-          perl -i -pe \
-            'if (/CURRENT_PROJECT_VERSION = "\$\(FLUTTER_BUILD_NUMBER\)";/) { $_ .= "\t\t\t\tDEVELOPMENT_TEAM = AAAAAAAAAA;\n" }' \
-            ios/Runner.xcodeproj/project.pbxproj
-          echo "DEVELOPMENT_TEAM added to pbxproj"
-
-      - name: Second pass – real build (validation passes now)
+          flutter build ios --release --no-codesign
+      - name: Create unsigned IPA
         script: |
-          flutter build ios --debug --no-codesign \
-            --build-name=1.0.0 --build-number=1
-
-      - name: Create IPA payload for Sideloadly
-        script: |
-          TARGET="build/ios/Debug-iphoneos/Runner.app"
-          if [ -d "$TARGET" ]; then
-            APP_SIZE=$(du -sh "$TARGET" | cut -f1)
-            echo "Runner.app size: $APP_SIZE"
-            mkdir -p build/ios_debug/Payload
-            cp -r "$TARGET" build/ios_debug/Payload/
-            cd build/ios_debug
-            zip -r ../app-debug.ipa Payload/
-            rm -rf Payload
-            echo "IPA created successfully"
-          else
-            echo "Runner.app not found"
-            ls -la build/ios/Debug-iphoneos/ 2>/dev/null || echo "dir missing"
-            exit 1
-          fi
-
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r ../../../build/app-release.ipa Payload/
     artifacts:
-      - build/app-debug.ipa
-      - build/ios/Debug-iphoneos/Runner.app.dSYM.zip
-
+      - build/app-release.ipa
     publishing:
       email: ~
